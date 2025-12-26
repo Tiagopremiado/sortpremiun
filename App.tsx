@@ -41,7 +41,6 @@ const App: React.FC = () => {
   const [wheelConfig, setWheelConfig] = useState([]);
   const [slotSymbols, setSlotSymbols] = useState<SlotSymbol[]>([]);
 
-  // Mapeia o perfil do DB para o objeto User do App
   const mapProfileToUser = (profile: any, authUser: any): User => {
     return {
       id: authUser.id,
@@ -60,11 +59,15 @@ const App: React.FC = () => {
   };
 
   const loadSession = async () => {
-    setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Tenta buscar a sessão com um timeout manual implícito
+      const sessionPromise = supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await sessionPromise;
+      
+      if (sessionError) throw sessionError;
+
       if (session?.user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
@@ -73,41 +76,51 @@ const App: React.FC = () => {
         setUser(mapProfileToUser(profile, session.user));
       }
     } catch (err) {
-      console.error("Erro na sessão:", err);
+      console.warn("Conexão com banco de dados limitada ou pendente de configuração:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // TIMER DE SEGURANÇA: Se em 5 segundos não carregar, libera a tela
+    const safetyTimer = setTimeout(() => {
+      if (loading) {
+        console.log("Safety timer acionado: Forçando encerramento do loading.");
+        setLoading(false);
+      }
+    }, 5000);
+
     loadSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        
-        const mappedUser = mapProfileToUser(profile, session.user);
-        setUser(mappedUser);
-        
-        if (event === 'SIGNED_IN') {
-          setCurrentPage('home');
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          setUser(mapProfileToUser(profile, session.user));
+          if (event === 'SIGNED_IN') setCurrentPage('home');
+        } catch (e) {
+          setUser(mapProfileToUser(null, session.user));
         }
       } else {
         setUser(null);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   const handleUpdateUser = async (updated: User) => {
     setUser(updated);
     try {
-      // Tenta persistir mas não trava a interface se falhar
       await supabase.from('profiles').upsert({
         id: updated.id,
         name: updated.name,
@@ -137,6 +150,12 @@ const App: React.FC = () => {
         <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mb-4" />
         <h1 className="text-xl font-black uppercase italic tracking-tighter">Estância da Sorte</h1>
         <p className="opacity-60 text-[10px] font-bold uppercase tracking-widest mt-2">Sincronizando...</p>
+        <button 
+          onClick={() => setLoading(false)}
+          className="mt-8 text-[9px] font-black uppercase tracking-widest bg-white/10 px-4 py-2 rounded-lg hover:bg-white/20 transition-all"
+        >
+          Entrar mesmo assim
+        </button>
       </div>
     );
   }
@@ -167,7 +186,7 @@ const App: React.FC = () => {
         
         {currentPage === 'login' && (
           <Login 
-            onLogin={() => { /* O onAuthStateChange cuida disso */ }} 
+            onLogin={() => {}} 
             onBack={() => setCurrentPage('home')} 
             onNavigateToConfirm={() => setCurrentPage('home')} 
           />
