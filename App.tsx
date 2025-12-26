@@ -12,6 +12,8 @@ import ResetPassword from './pages/ResetPassword';
 import EmailConfirmation from './pages/EmailConfirmation';
 import CheckoutModal from './components/CheckoutModal';
 import DepositModal from './components/DepositModal';
+import WinnerCelebration from './components/WinnerCelebration';
+import YearEndRegModal from './components/YearEndRegModal';
 import { Raffle, User, Order, RaffleStatus, WithdrawalRequest, WheelWin, Winner, AppNotification, SlotSymbol } from './types';
 import { mockRaffles, mockWinners, mockOrders } from './services/mockData';
 import { supabase } from './services/supabaseClient';
@@ -22,6 +24,12 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tempEmail, setTempEmail] = useState('');
+  
+  // Modais de Fim de Ano
+  const [showYearEndModal, setShowYearEndModal] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationData, setCelebrationData] = useState({ title: '', message: '', ticket: '' });
+  const [registeringYearEnd, setRegisteringYearEnd] = useState(false);
   
   // Estados Administrativos
   const [isCasinoPayoutEnabled, setIsCasinoPayoutEnabled] = useState(true);
@@ -82,6 +90,7 @@ const App: React.FC = () => {
     rewardPoints: parseInt(profile.reward_points || 0),
     createdAt: profile.created_at || new Date().toISOString(),
     isRegisteredForYearEnd: profile.is_registered_for_year_end,
+    yearEndTicket: profile.year_end_ticket,
     hasSeenTour: profile.has_seen_tour,
     affiliateCode: profile.affiliate_code,
     referredBy: profile.referred_by,
@@ -123,7 +132,7 @@ const App: React.FC = () => {
         })));
       }
 
-      // Tentar carregar configuração de slots se existir no banco (opcional para persistência)
+      // Tentar carregar configuração de slots se existir no banco
       const { data: dbSlots } = await supabase.from('slot_config').select('*').order('multiplier', { ascending: false });
       if (dbSlots && dbSlots.length > 0) {
         setSlotSymbols(dbSlots.map(s => ({
@@ -206,6 +215,7 @@ const App: React.FC = () => {
       reward_points: Math.round(Number(updated.rewardPoints)),
       has_seen_tour: updated.hasSeenTour,
       is_registered_for_year_end: updated.isRegisteredForYearEnd,
+      year_end_ticket: updated.yearEndTicket,
       last_spin_date: updated.lastSpinDate
     };
 
@@ -223,8 +233,6 @@ const App: React.FC = () => {
   };
 
   const handleAddRaffle = async (newRaffle: Raffle) => {
-    // Basic mapping for supabase insertion if DB columns follow camelCase or snake_case
-    // Using explicit mapping for safety assuming DB uses snake_case common in supabase
     const { error } = await supabase.from('raffles').insert([{
       title: newRaffle.title,
       description: newRaffle.description,
@@ -237,7 +245,6 @@ const App: React.FC = () => {
       max_tickets_per_user: newRaffle.maxTicketsPerUser
     }]);
 
-    // Optimistic update
     setRaffles([newRaffle, ...raffles]);
     if (error) console.error("Error adding raffle:", error);
   };
@@ -257,15 +264,12 @@ const App: React.FC = () => {
       winner_name: updatedRaffle.winnerName
     }).eq('id', updatedRaffle.id);
 
-    // Optimistic update
     setRaffles(raffles.map(r => r.id === updatedRaffle.id ? updatedRaffle : r));
     if (error) console.error("Error updating raffle:", error);
   };
 
   const handleUpdateWithdrawal = async (id: string, status: 'paid' | 'rejected') => {
     const { error } = await supabase.from('withdrawals').update({ status }).eq('id', id);
-    
-    // Optimistic update
     setWithdrawals(withdrawals.map(w => w.id === id ? { ...w, status } : w));
     if (error) console.error("Error updating withdrawal:", error);
   };
@@ -309,13 +313,71 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // --- Lógica Sorteio de Fim de Ano ---
+  const handleOpenYearEnd = () => {
+    if (!user) {
+      setCurrentPage('login');
+      return;
+    }
+    if (user.isRegisteredForYearEnd) {
+      // Se já estiver participando, apenas mostra a celebração com o ticket
+      setCelebrationData({
+        title: 'Você já está dentro!',
+        message: 'Seu ticket já está garantido para o grande sorteio.',
+        ticket: user.yearEndTicket || '----'
+      });
+      setShowCelebration(true);
+    } else {
+      setShowYearEndModal(true);
+    }
+  };
+
+  const handleConfirmYearEnd = async () => {
+    if (!user) return;
+    setRegisteringYearEnd(true);
+    
+    // Gera ticket aleatório de 6 dígitos
+    const ticket = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    const updatedUser = {
+      ...user,
+      isRegisteredForYearEnd: true,
+      yearEndTicket: ticket
+    };
+
+    // Salva no banco
+    await handleUpdateUser(updatedUser);
+    
+    setRegisteringYearEnd(false);
+    setShowYearEndModal(false);
+    
+    // Mostra celebração
+    setCelebrationData({
+      title: 'Presença Confirmada!',
+      message: 'Parabéns! Você já está concorrendo ao prêmio de R$ 50.000,00 da virada.',
+      ticket: ticket
+    });
+    setShowCelebration(true);
+  };
+  // ------------------------------------
+
   if (loading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white font-black italic">ESTÂNCIA CARREGANDO...</div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Navbar user={user} isLoggedIn={!!user} onNavigate={handleNavigate} onAddBalance={() => setCurrentPage('profile')} onLogout={async () => { await supabase.auth.signOut(); setUser(null); }} tickerMessages={tickerMessages} />
       <main className="flex-grow">
-        {currentPage === 'home' && <Home raffles={raffles.filter(r => r.status === RaffleStatus.ACTIVE)} onRaffleClick={(id) => { setSelectedRaffleId(id); setCurrentPage('detail'); }} onJoinYearEndAction={() => handleNavigate('profile')} isParticipating={user?.isRegisteredForYearEnd} tickerMessages={tickerMessages} siteConfig={siteConfig} />}
+        {currentPage === 'home' && (
+          <Home 
+            raffles={raffles.filter(r => r.status === RaffleStatus.ACTIVE)} 
+            onRaffleClick={(id) => { setSelectedRaffleId(id); setCurrentPage('detail'); }} 
+            onJoinYearEndAction={handleOpenYearEnd} 
+            isParticipating={user?.isRegisteredForYearEnd} 
+            userTicket={user?.yearEndTicket}
+            tickerMessages={tickerMessages} 
+            siteConfig={siteConfig} 
+          />
+        )}
         {currentPage === 'login' && <Login onLogin={(u) => { handleNavigate('home'); }} onBack={() => setCurrentPage('home')} onNavigateToConfirm={(email) => { setTempEmail(email); setCurrentPage('confirm-email'); }} />}
         {currentPage === 'detail' && selectedRaffleId && <RaffleDetail raffle={raffles.find(r => r.id === selectedRaffleId)!} onBack={() => setCurrentPage('home')} onBuy={() => {}} />}
         {currentPage === 'profile' && user && (
@@ -375,6 +437,22 @@ const App: React.FC = () => {
           />
         )}
       </main>
+
+      {/* Modais Globais */}
+      <YearEndRegModal 
+        isOpen={showYearEndModal} 
+        onClose={() => setShowYearEndModal(false)} 
+        onConfirm={handleConfirmYearEnd} 
+        loading={registeringYearEnd} 
+      />
+      
+      <WinnerCelebration 
+        isOpen={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        title={celebrationData.title}
+        message={celebrationData.message}
+        ticketNumber={celebrationData.ticket}
+      />
     </div>
   );
 };

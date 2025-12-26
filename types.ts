@@ -63,44 +63,6 @@ export interface WithdrawalRequest {
   createdAt: string;
 }
 
-export interface WheelWin {
-  id: string;
-  userId: string;
-  userName: string;
-  prizeLabel: string;
-  prizeValue: number;
-  prizeType: string;
-  createdAt: string;
-}
-
-export interface SlotSymbol {
-  id: string;
-  icon: string; // Emoji ou URL
-  multiplier: number;
-  label: string;
-  frequency: number; // Peso para RNG (1-100)
-}
-
-export interface AffiliateAutomation {
-  id: string;
-  name: string;
-  type: 'email' | 'push' | 'whatsapp';
-  status: 'active' | 'inactive';
-  description: string;
-}
-
-export interface ActiveDiscount {
-  id: string;
-  percentage: number;
-  expiresAt: string;
-}
-
-export interface DailyMission {
-  title: string;
-  description: string;
-  reward: string;
-}
-
 export interface User {
   id: string;
   name: string;
@@ -115,17 +77,12 @@ export interface User {
   referredBy?: string;
   totalEarned?: number;
   currentBalance?: number;
-  totalReferralSales?: number;
-  referralCount?: number;
-  bonusTicketsCount?: number;
-  automations?: AffiliateAutomation[];
   rewardPoints?: number;
   lastSpinDate?: string;
-  activeDiscounts?: ActiveDiscount[];
-  notifications?: AppNotification[];
   isRegisteredForYearEnd?: boolean;
   yearEndTicket?: string;
-  hasSeenTour?: boolean;
+  hasSeenTour?: boolean; // Novo campo para controle de onboarding
+  notifications?: AppNotification[];
 }
 
 export interface Order {
@@ -137,8 +94,6 @@ export interface Order {
   totalValue: number;
   status: 'pending' | 'paid' | 'cancelled';
   createdAt: string;
-  affiliateId?: string;
-  isBonus?: boolean;
 }
 
 export interface Winner {
@@ -151,11 +106,42 @@ export interface Winner {
   drawDate: string;
   imageUrl?: string;
   testimonial?: string;
-  verifiedAt?: string;
   location?: string;
+  // Fix: Added verifiedAt property to Winner interface to match mock data
+  verifiedAt?: string;
 }
 
+export interface SlotSymbol {
+  id: string;
+  icon: string;
+  multiplier: number;
+  label: string;
+  frequency: number;
+}
+
+// Fix: Added missing interfaces required by other components
 export interface TopBuyer {
   name: string;
   count: number;
+}
+
+export interface WheelWin {
+  id: string;
+  userId: string;
+  prizeId: number;
+  createdAt: string;
+}
+
+export interface AffiliateAutomation {
+  id: string;
+  name: string;
+  type: 'email' | 'whatsapp' | 'push';
+  status: 'active' | 'inactive';
+  description: string;
+}
+
+export interface DailyMission {
+  title: string;
+  description: string;
+  reward: string;
 }

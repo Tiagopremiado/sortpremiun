@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import RaffleCard from '../components/RaffleCard';
 import { Raffle } from '../types';
@@ -8,11 +7,12 @@ interface HomeProps {
   onRaffleClick: (id: string) => void;
   onJoinYearEndAction: () => void;
   isParticipating?: boolean;
+  userTicket?: string;
   tickerMessages?: string[];
   siteConfig?: any;
 }
 
-const Home: React.FC<HomeProps> = ({ raffles, onRaffleClick, onJoinYearEndAction, isParticipating, tickerMessages = [], siteConfig }) => {
+const Home: React.FC<HomeProps> = ({ raffles, onRaffleClick, onJoinYearEndAction, isParticipating, userTicket, tickerMessages = [], siteConfig }) => {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   const targetDateStr = siteConfig?.yearEndTargetDate || '2024-12-31T23:59:59';
@@ -128,16 +128,21 @@ const Home: React.FC<HomeProps> = ({ raffles, onRaffleClick, onJoinYearEndAction
 
           <div className="flex flex-col items-center gap-8">
             {isParticipating ? (
-              <div className="bg-emerald-600/20 border border-emerald-500/50 p-8 rounded-[3rem] animate-in zoom-in duration-500">
-                <p className="text-emerald-400 font-black text-xl uppercase italic mb-2">✅ VOCÊ JÁ ESTÁ PARTICIPANDO!</p>
-                <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Acompanhe o sorteio no dia do encerramento.</p>
+              <div className="bg-emerald-600/20 border border-emerald-500/50 p-8 rounded-[3rem] animate-in zoom-in duration-500 max-w-xl mx-auto backdrop-blur-md">
+                <div className="text-5xl mb-4">🎫</div>
+                <p className="text-emerald-400 font-black text-xl uppercase italic mb-2 tracking-tighter">VOCÊ JÁ ESTÁ DENTRO!</p>
+                <div className="bg-slate-950/50 rounded-2xl p-4 my-4 border border-white/10">
+                   <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Seu Número da Sorte</p>
+                   <p className="text-4xl font-mono font-black text-white tracking-[0.2em]">{userTicket || '----'}</p>
+                </div>
+                <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">O sorteio ocorrerá dia 31/12 via Loteria Federal.</p>
               </div>
             ) : (
               <button 
                 onClick={onJoinYearEndAction}
-                className="group relative bg-gradient-to-r from-amber-400 to-amber-600 text-slate-950 px-16 py-8 rounded-[2.5rem] font-black text-2xl hover:scale-105 transition-all shadow-[0_0_80px_rgba(245,158,11,0.4)] active:scale-95 uppercase tracking-tighter"
+                className="group relative bg-gradient-to-r from-amber-400 to-amber-600 text-slate-950 px-16 py-8 rounded-[2.5rem] font-black text-2xl hover:scale-105 transition-all shadow-[0_0_80px_rgba(245,158,11,0.4)] active:scale-95 uppercase tracking-tighter overflow-hidden"
               >
-                CADASTRAR NESTA AÇÃO GRATUITAMENTE
+                <span className="relative z-10">CADASTRAR NESTA AÇÃO GRATUITAMENTE</span>
                 <div className="absolute inset-0 bg-white/20 rounded-[2.5rem] scale-0 group-hover:scale-100 transition-transform duration-500" />
               </button>
             )}
