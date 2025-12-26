@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Sorteio Premium - Especial Fim de Ano (KALEBY",
+  "description": "Uma plataforma completa de rifas digitais e sorteios com área de usuário e painel administrativo, otimizada para alta conversão no final de ano.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
