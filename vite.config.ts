@@ -1,17 +1,22 @@
 
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'fs';
+
+// Lê o package.json para pegar a versão automaticamente
+const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
 export default defineConfig(({ mode }) => {
   // Carrega as variáveis de ambiente baseadas no modo (development/production)
-  // Fix: Cast process to any to resolve "Property 'cwd' does not exist on type 'Process'"
   const env = loadEnv(mode, (process as any).cwd(), '');
   
   return {
     plugins: [react()],
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY),
-      'process.env': env
+      'process.env': env,
+      // Injeta a versão do package.json no cliente
+      'import.meta.env.PACKAGE_VERSION': JSON.stringify(packageJson.version)
     },
     build: {
       outDir: 'dist',

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import RaffleCard from '../components/RaffleCard';
 import { Raffle } from '../types';
@@ -20,6 +21,9 @@ const Home: React.FC<HomeProps> = ({ raffles, onRaffleClick, onJoinYearEndAction
   const yearEndSubtitle = siteConfig?.yearEndSubtitle || "VIRADA 2024";
   const yearEndDesc = siteConfig?.yearEndDescription || "Estamos encerrando o ano com chave de ouro! Cadastre-se gratuitamente na nossa ação especial e concorra ao prêmio principal.";
   const bannerUrl = siteConfig?.yearEndBannerUrl || "";
+
+  // Recupera a versão injetada pelo Vite
+  const appVersion = (import.meta as any).env.PACKAGE_VERSION || '1.0.0';
 
   useEffect(() => {
     const target = new Date(targetDateStr).getTime();
@@ -170,7 +174,7 @@ const Home: React.FC<HomeProps> = ({ raffles, onRaffleClick, onJoinYearEndAction
         </div>
       </section>
 
-      {/* Footer Profissional */}
+      {/* Footer Profissional com Versionamento Automático */}
       <footer className="bg-white pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-8">
@@ -179,9 +183,23 @@ const Home: React.FC<HomeProps> = ({ raffles, onRaffleClick, onJoinYearEndAction
             </div>
             <span className="text-2xl font-black tracking-tighter text-slate-800 uppercase">SORTEIO<span className="text-emerald-600">FÁCIL</span></span>
           </div>
-          <p className="text-slate-300 text-[10px] font-black uppercase tracking-widest">
-            &copy; 2024 - ESTÂNCIA DA SORTE - AÇÃO DA VIRADA
-          </p>
+          
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-slate-300 text-[10px] font-black uppercase tracking-widest">
+              &copy; 2024 - ESTÂNCIA DA SORTE - AÇÃO DA VIRADA
+            </p>
+            
+            {/* Indicador de Versão Automatizado */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border border-slate-100 opacity-50 hover:opacity-100 transition-opacity cursor-help group" title="Versão Atual do Sistema">
+               <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+               </span>
+               <span className="text-[8px] font-mono text-slate-400 uppercase tracking-widest">
+                  System Build v{appVersion} <span className="hidden group-hover:inline text-emerald-600">• Stable</span>
+               </span>
+            </div>
+          </div>
         </div>
       </footer>
 
