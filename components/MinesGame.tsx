@@ -43,7 +43,6 @@ const MinesGame: React.FC<MinesGameProps> = ({
   const [showLowBalance, setShowLowBalance] = useState(false);
   const [roundHash, setRoundHash] = useState<string>('');
   const [serverSeed, setServerSeed] = useState<string>('');
-  const [explodedIndex, setExplodedIndex] = useState<number | null>(null);
 
   const combinations = (n: number, k: number): number => {
     if (k < 0 || k > n) return 0;
@@ -85,7 +84,6 @@ const MinesGame: React.FC<MinesGameProps> = ({
     const newRoundHash = generateSecureHash();
     setServerSeed(newServerSeed);
     setRoundHash(newRoundHash);
-    setExplodedIndex(null);
 
     const positions: number[] = [];
     while (positions.length < minesCount) {
@@ -111,7 +109,6 @@ const MinesGame: React.FC<MinesGameProps> = ({
       const newGrid = [...grid];
       minesPositions.forEach(pos => { newGrid[pos] = 'mine'; });
       setGrid(newGrid);
-      setExplodedIndex(index);
       setGameState('ended');
       setLastAction('loss');
       onUpdateLiquidity(betAmount, 'add');
@@ -352,30 +349,12 @@ const MinesGame: React.FC<MinesGameProps> = ({
               <div className="text-8xl mb-8 transform hover:rotate-12 transition-transform cursor-default">
                 {lastAction === 'win' ? '👑' : '💥'}
               </div>
-              <h2 className={`text-5xl font-black uppercase italic tracking-tighter mb-6 leading-none ${lastAction === 'win' ? 'text-slate-900' : 'text-white'}`}>
+              <h2 className={`text-5xl font-black uppercase italic tracking-tighter mb-4 leading-none ${lastAction === 'win' ? 'text-slate-900' : 'text-white'}`}>
                 {lastAction === 'win' ? 'LUCRO REAL!' : 'QUE PENA!'}
               </h2>
-
-              {lastAction === 'win' ? (
-                <div className="mb-10 bg-emerald-50 rounded-[2rem] p-6 border border-emerald-100">
-                   <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Valor Creditado</p>
-                   <p className="text-5xl font-black text-emerald-600 mb-4 tracking-tighter">R$ {potentialWin.toFixed(2)}</p>
-                   <div className="bg-emerald-200 text-emerald-800 px-4 py-1.5 rounded-full inline-block font-black text-xs uppercase tracking-widest">
-                       Multiplicador Final: {currentMultiplier.toFixed(2)}x
-                   </div>
-                </div>
-              ) : (
-                <div className="mb-10 bg-slate-950 rounded-[2rem] p-6 border border-white/5">
-                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
-                       Mina detonada na posição <span className="text-white font-bold ml-1">#{explodedIndex !== null ? explodedIndex + 1 : '?'}</span>
-                   </p>
-                   <p className="text-3xl font-black text-red-500 tracking-tighter">
-                       - R$ {betAmount.toFixed(2)}
-                   </p>
-                   <p className="text-[9px] text-slate-600 font-bold uppercase mt-2">Valor da aposta deduzido</p>
-                </div>
-              )}
-
+              <p className={`font-black uppercase text-[12px] tracking-[0.4em] mb-12 ${lastAction === 'win' ? 'text-emerald-600' : 'text-slate-500'}`}>
+                {lastAction === 'win' ? `CREDITADO R$ ${potentialWin.toFixed(2)}` : 'EXPLODIU TUDO...'}
+              </p>
               <button 
                 onClick={() => { setGameState('betting'); setGrid(Array(GRID_SIZE).fill('hidden')); setLastAction(null); }} 
                 className={`w-full px-12 py-6 rounded-[2rem] font-black uppercase text-lg tracking-widest shadow-2xl transition-all active:scale-95 ${lastAction === 'win' ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'bg-white/10 text-white hover:bg-white/20'}`}
