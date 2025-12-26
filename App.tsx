@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -79,23 +80,40 @@ const App: React.FC = () => {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [raffles, setRaffles] = useState<Raffle[]>(mockRaffles);
 
-  const mapProfileToUser = (profile: any): User => ({
-    id: profile.id,
-    name: profile.name,
-    email: profile.email,
-    cpf: profile.cpf,
-    role: profile.role,
-    avatarUrl: profile.avatar_url || 'https://via.placeholder.com/150',
-    currentBalance: parseFloat(profile.current_balance || 0),
-    rewardPoints: parseInt(profile.reward_points || 0),
-    createdAt: profile.created_at || new Date().toISOString(),
-    isRegisteredForYearEnd: profile.is_registered_for_year_end,
-    yearEndTicket: profile.year_end_ticket,
-    hasSeenTour: profile.has_seen_tour,
-    affiliateCode: profile.affiliate_code,
-    referredBy: profile.referred_by,
-    lastSpinDate: profile.last_spin_date
-  });
+  const mapProfileToUser = (profile: any, fallbackAuthUser?: any): User => {
+    // Se perfil não existir, usa dados da sessão de auth como fallback para não bloquear o acesso
+    if (!profile && fallbackAuthUser) {
+      return {
+        id: fallbackAuthUser.id,
+        name: fallbackAuthUser.user_metadata?.name || 'Usuário',
+        email: fallbackAuthUser.email || '',
+        cpf: fallbackAuthUser.user_metadata?.cpf || '',
+        role: fallbackAuthUser.user_metadata?.role || 'user',
+        avatarUrl: 'https://via.placeholder.com/150',
+        currentBalance: 0,
+        rewardPoints: 0,
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    return {
+      id: profile.id,
+      name: profile.name,
+      email: profile.email,
+      cpf: profile.cpf,
+      role: profile.role,
+      avatarUrl: profile.avatar_url || 'https://via.placeholder.com/150',
+      currentBalance: parseFloat(profile.current_balance || 0),
+      rewardPoints: parseInt(profile.reward_points || 0),
+      createdAt: profile.created_at || new Date().toISOString(),
+      isRegisteredForYearEnd: profile.is_registered_for_year_end,
+      yearEndTicket: profile.year_end_ticket,
+      hasSeenTour: profile.has_seen_tour,
+      affiliateCode: profile.affiliate_code,
+      referredBy: profile.referred_by,
+      lastSpinDate: profile.last_spin_date
+    };
+  };
 
   const fetchAppData = async (userId?: string) => {
     try {
@@ -116,7 +134,7 @@ const App: React.FC = () => {
       if (dbRaffles) setRaffles(dbRaffles as any);
       if (dbWinners) setWinners(dbWinners as any);
       if (dbWithdrawals) setWithdrawals(dbWithdrawals as any);
-      if (dbUsers) setAllUsers(dbUsers.map(mapProfileToUser));
+      if (dbUsers) setAllUsers(dbUsers.map(u => mapProfileToUser(u)));
       if (dbOrders) setOrders(dbOrders as any);
 
       const { data: dbWheel } = await supabase.from('wheel_config').select('*').order('id', { ascending: true });
@@ -165,8 +183,9 @@ const App: React.FC = () => {
         if (sessionError) throw sessionError;
 
         if (session?.user) {
+          // Busca perfil ou usa fallback
           const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-          if (profile) setUser(mapProfileToUser(profile));
+          setUser(mapProfileToUser(profile, session.user));
         }
         
         await fetchAppData();
@@ -184,13 +203,15 @@ const App: React.FC = () => {
       if (event === 'SIGNED_IN' && session?.user) {
         try {
           const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-          if (profile) {
-            setUser(mapProfileToUser(profile));
-            await fetchAppData();
-            handleNavigate('home');
-          }
+          // Garante login mesmo sem perfil
+          setUser(mapProfileToUser(profile, session.user));
+          await fetchAppData();
+          handleNavigate('home');
         } catch (e) {
           console.error("Erro ao buscar perfil após login:", e);
+          // Fallback em caso de erro na query
+          setUser(mapProfileToUser(null, session.user));
+          handleNavigate('home');
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);

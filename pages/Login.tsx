@@ -34,15 +34,20 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onNavigateToConfirm }) =
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '?reset=true',
-    });
-    if (error) {
-      setStatusMsg({ type: 'error', text: error.message });
-    } else {
-      setStatusMsg({ type: 'success', text: "Link de recuperação enviado para seu e-mail!" });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '?reset=true',
+      });
+      if (error) {
+        setStatusMsg({ type: 'error', text: error.message });
+      } else {
+        setStatusMsg({ type: 'success', text: "Link de recuperação enviado para seu e-mail!" });
+      }
+    } catch (err) {
+      setStatusMsg({ type: 'error', text: "Erro inesperado. Tente novamente." });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,43 +58,55 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onNavigateToConfirm }) =
     }
 
     setLoading(true);
-    if (view === 'register') {
-      if (cpf.length < 14 || name.split(' ').length < 2) {
-        alert("Por favor, preencha seu nome completo e um CPF válido.");
-        setLoading(false);
-        return;
-      }
+    setStatusMsg(null);
+    
+    try {
+      if (view === 'register') {
+        if (cpf.length < 14 || name.split(' ').length < 2) {
+          alert("Por favor, preencha seu nome completo e um CPF válido.");
+          setLoading(false);
+          return;
+        }
 
-      const role = inviteCode.toUpperCase() === 'ADMIN2024' ? 'admin' : 'user';
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name, cpf, role },
-          emailRedirectTo: window.location.origin,
-        },
-      });
+        const role = inviteCode.toUpperCase() === 'ADMIN2024' ? 'admin' : 'user';
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name, cpf, role },
+            emailRedirectTo: window.location.origin,
+          },
+        });
 
-      if (error) {
-        alert(error.message);
+        if (error) {
+          alert(error.message);
+        } else {
+          onNavigateToConfirm(email);
+        }
       } else {
-        onNavigateToConfirm(email);
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          // Tratamento de erro específico para credenciais inválidas vs erros de sistema
+          const msg = error.message === "Invalid login credentials" 
+            ? "E-mail ou senha incorretos." 
+            : error.message || "Erro ao conectar.";
+          alert(`Falha no login: ${msg}`);
+        } else if (data.user) {
+          // Notifica o componente pai do sucesso
+          onLogin(data.user);
+        }
       }
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        alert("Erro ao entrar: Verifique e-mail e senha.");
-      } else if (data.user) {
-        // Notifica o componente pai do sucesso
-        onLogin(data.user);
-      }
+    } catch (error: any) {
+      console.error("Erro crítico no login:", error);
+      alert("Ocorreu um erro inesperado. Verifique sua conexão ou tente novamente mais tarde.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <div className="min-h-[90vh] flex items-center justify-center p-4 bg-slate-50/50">
-      <div className="bg-white w-full max-w-md rounded-[3rem] border border-slate-100 shadow-2xl p-8 md:p-10 relative overflow-hidden">
+      <div className="bg-white w-full max-w-md rounded-[3rem] border border-slate-100 shadow-2xl p-8 md:p-10 relative overflow-hidden animate-in zoom-in duration-300">
         
         {view === 'register' && (
           <div className="mb-8 bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top duration-500">
@@ -149,22 +166,22 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onNavigateToConfirm }) =
             </div>
           )}
 
-          <button disabled={loading} className="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 text-white py-5 rounded-2xl font-black text-lg hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all shadow-xl mt-6 uppercase tracking-widest disabled:opacity-50">
+          <button disabled={loading} className="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 text-white py-5 rounded-2xl font-black text-lg hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all shadow-xl mt-6 uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed">
             {loading ? 'PROCESSANDO...' : view === 'register' ? 'FINALIZAR CADASTRO' : view === 'forgot' ? 'ENVIAR LINK' : 'ENTRAR NO SISTEMA'}
           </button>
         </form>
 
         <div className="mt-8 text-center space-y-4">
           {view === 'login' && (
-            <button onClick={() => setView('forgot')} className="block w-full text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-emerald-600">Esqueci minha senha</button>
+            <button type="button" onClick={() => setView('forgot')} className="block w-full text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-emerald-600">Esqueci minha senha</button>
           )}
           
-          <button onClick={() => setView(view === 'login' ? 'register' : 'login')} className="text-slate-400 text-xs font-black uppercase tracking-widest hover:text-emerald-600">
+          <button type="button" onClick={() => setView(view === 'login' ? 'register' : 'login')} className="text-slate-400 text-xs font-black uppercase tracking-widest hover:text-emerald-600">
             {view === 'login' ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entrar'}
           </button>
           
           <div className="pt-6 border-t border-slate-50">
-             <button onClick={onBack} className="text-[10px] text-slate-300 font-black uppercase tracking-widest hover:text-slate-400">Voltar ao início</button>
+             <button type="button" onClick={onBack} className="text-[10px] text-slate-300 font-black uppercase tracking-widest hover:text-slate-400">Voltar ao início</button>
           </div>
         </div>
       </div>
